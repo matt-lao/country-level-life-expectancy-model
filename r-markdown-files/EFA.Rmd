@@ -1,0 +1,189 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+<center>
+
+<h1>
+
+STAT 360: Computational Statistics and Data Analysis
+
+<h2>Project - EFA</h2>
+
+<h4>Matt Lao & Adam Bihi</h4>
+
+</center>
+
+### Load Relevant R Libraries
+
+```{r warning=FALSE, message=FALSE}
+library(rmarkdown); library(knitr); library(moments); 
+library(scatterplot3d); library(corrplot); library(pso)
+library(psych); library(GPArotation); library(lavaan); library(readxl); library(dplyr)
+```
+
+### Matrix Construction
+
+```{r}
+data_matrix_csv <- read.csv("C:/Users/User/OneDrive - University of St. Thomas/Classes/STAT360/STAT360 Project/data/Data Matrix.csv", row.names=1)
+life_expectancy <- as.matrix(data_matrix_csv)
+
+col_names_unedited <- c(
+  "Life expectancy at birth, total (years)",
+  "CO2 emissions (metric tons per capita)",
+  "Access to electricity (% of population)",
+  "Current health expenditure (% of GDP)",
+  "Out-of-pocket expenditure (% of current health expenditure)",
+  "Domestic private health expenditure per capita, PPP (current international $)",
+  "Domestic general government health expenditure per capita, PPP (current international $)",
+  "Renewable internal freshwater resources per capita (cubic meters)",
+  "Prevalence of HIV, total (% of population ages 15-49)",
+  "Unemployment, total (% of total labor force) (national estimate)",
+  "Government Effectiveness: Estimate",
+  "Income share held by highest 10%",
+  "Prevalence of current tobacco use (% of adults)",
+  "Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)",
+  "Political Stability and Absence of Violence/Terrorism: Estimate",
+  "Population density (people per sq. km of land area)"
+)
+
+# Better for displaying
+col_names <- c(
+  "Life_expectancy",
+  "CO2_emissions",
+  "Electricity",
+  "Health_expenditure",
+  "Out_of_pocket",
+  "Private_health_expenditure",
+  "Govt_health_expenditure",
+  "Freshwater_resources",
+  "HIV_prevalence",
+  "Unemployment",
+  "Govt_effectiveness",
+  "Income_share",
+  "Tobacco_use",
+  "Alcohol_consumption",
+  "Political_stability",
+  "Population_density"
+)
+
+colnames(life_expectancy) <- col_names
+
+
+
+```
+
+### Variance-Covariance Matrix
+
+```{r}
+SIGMA <- cov(life_expectancy, use = "pairwise.complete.obs")
+SIGMA
+```
+
+### Covariance Matrix (Response/Predictors)
+
+```{r}
+SIGMA_p <- SIGMA[2:16,2:16]
+SIGMA_p
+
+SIGMA_r  <- SIGMA[1,1]
+SIGMA_r  <- as.matrix(SIGMA_r)
+SIGMA_r
+```
+
+### Correlation Matrix (Predictor/Response)
+
+```{r}
+R_p <- (solve(sqrt(diag(diag(SIGMA_p))))) %*% SIGMA_p %*%
+t(solve(sqrt(diag(diag(SIGMA_p)))))
+dimnames(R_p) <- list(c("CO2_emissions", "Electricity", "Health_expenditure", "Out_of_pocket", "Private_health_expenditure",
+  "Govt_health_expenditure","Freshwater_resources","HIV_prevalence","Unemployment", "Govt_effectiveness",
+  "Income_share","Tobacco_use","Alcohol_consumption", "Political_stability", "Population_density"),
+c("CO2_emissions", "Electricity", "Health_expenditure", "Out_of_pocket", "Private_health_expenditure", "Govt_health_expenditure",
+  "Freshwater_resources", "HIV_prevalence", "Unemployment", "Govt_effectiveness", "Income_share", "Tobacco_use",
+  "Alcohol_consumption","Political_stability", "Population_density"))
+R_p
+
+R_r <- cor(SIGMA_r, use = "pairwise.complete.obs")
+R_r
+```
+
+### Eigenvalues for response/predictor
+
+```{r}
+predictor <- eigen(R_p)$values
+predictor
+```
+
+### Intrinsic Dimensionality: Predictors
+
+```{r}
+sum(eigen(R_p)$values>1.0)
+
+sum(eigen(R_p)$values>0.7)
+
+plot(eigen(R_p)$values, type = "b")
+```
+
+We applied 3 types of criterion to the response variable.
+
+For Kaiser's criterion, 5 values are retained since only 5 values are above 1.
+
+For Jolliffe's criterion, 8 values are retained because they are above the threshold of 0.7.
+
+We think that Kaiser's criterion and Jolliffe's criterion represents our dimensionality the best. The average of these is 6.5, which we will round to an intrinsic dimensionality of 7.
+
+### Intrinsic Dimensionality: Response
+
+Since we only have a since response dimension are intrinsic dimensionality will be 1 no matter what criterion is applied.
+
+### Rotated Loading Matrix: Orthogonal
+
+```{r}
+A <- pca(r = R_p, nfactors = 7, rotate = "varimax")$loadings[]
+A
+corrplot(A)
+```
+
+### Rotated Loading Matrix: Oblique
+
+```{r}
+A_1 <- pca(r = R_p, nfactors = 7, rotate = "oblimin")$loadings[]
+A_1
+F_1 <- pca(r = R_p, nfactors = 7, rotate = "oblimin")$Phi
+F_1
+corrplot(A_1)
+```
+
+There are correlations among factors above 0.3 , so oblique rotation is indeed necessary.
+
+### Communality
+
+```{r}
+pca(r = R_p, nfactors = 7, rotate = "oblimin")$communality
+```
+
+For a seven factor solution, all the dimensions retain above 70% of the variance of the original dimensions. This is a good because we avoid excessive data loss.
+
+### Variance
+
+```{r}
+pca(r = R_p, nfactors = 7, rotate = "oblimin")
+```
+
+For a seven factor solution,
+
+-   TC7 accounts for 19% of the entire variance
+
+-   TC1 accounts for 18% of the entire variance
+
+-   TC6 accounts for 16% of the entire variance
+
+-   TC2 accounts for 13% of the entire variance
+
+-   TC3 accounts for 13% of the entire variance
+
+-   TC5 accounts for 11% of the entire variance
+
+-   TC4 accounts for 10% of the entire variance

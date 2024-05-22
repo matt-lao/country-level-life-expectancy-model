@@ -1,0 +1,153 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+<!-- INSTRUCTION: This is the template you will use to type up your responses to the exercises. To produce a document that you can print out and turn in just click on Knit HTML above. All you need to do to complete the lab report is to type up your BRIEF answers and the R code (when necessary) in the spaces provided below, rearranging them as needed based on the number of questions in each problem. -->
+
+<center>
+
+<h1>
+
+STAT 360: Computational Statistics and Data Analysis
+
+</center>
+
+### Load Relevant R Libraries
+
+```{r warning=FALSE, message=FALSE}
+library(rmarkdown); library(knitr); library(moments); 
+library(scatterplot3d); library(corrplot); library(pso)
+library(psych); library(GPArotation); library(lavaan)
+```
+
+##SEM
+
+```{r}
+data_matrix_csv <- read.csv("C:/Users/User/OneDrive - University of St. Thomas/Classes/STAT360/STAT360 Project/data/Data Matrix.csv", row.names=1)
+life_expectancy <- as.matrix(data_matrix_csv)
+
+col_names_unedited <- c(
+  "Life expectancy at birth, total (years)",
+  "CO2 emissions (metric tons per capita)",
+  "Access to electricity (% of population)",
+  "Current health expenditure (% of GDP)",
+  "Out-of-pocket expenditure (% of current health expenditure)",
+  "Domestic private health expenditure per capita, PPP (current international $)",
+  "Domestic general government health expenditure per capita, PPP (current international $)",
+  "Renewable internal freshwater resources per capita (cubic meters)",
+  "Prevalence of HIV, total (% of population ages 15-49)",
+  "Unemployment, total (% of total labor force) (national estimate)",
+  "Government Effectiveness: Estimate",
+  "Income share held by highest 10%",
+  "Prevalence of current tobacco use (% of adults)",
+  "Total alcohol consumption per capita (liters of pure alcohol, projected estimates, 15+ years of age)",
+  "Political Stability and Absence of Violence/Terrorism: Estimate",
+  "Population density (people per sq. km of land area)"
+)
+
+# Better for displaying
+col_names <- c(
+  "Life_expectancy",
+  "CO2_emissions",
+  "Electricity",
+  "Health_expenditure",
+  "Out_of_pocket",
+  "Private_health_expenditure",
+  "Govt_health_expenditure",
+  "Freshwater_resources",
+  "HIV_prevalence",
+  "Unemployment",
+  "Govt_effectiveness",
+  "Income_share",
+  "Tobacco_use",
+  "Alcohol_consumption",
+  "Political_stability",
+  "Population_density"
+)
+
+colnames(life_expectancy) <- col_names
+```
+
+```{r}
+SIG <- cov(life_expectancy, use = "pairwise.complete.obs")
+EQN <- '
+        # Measurement Model (Factor Definition)
+        Healthcare_Spending =~ Private_health_expenditure + Health_expenditure   
+        SocioEconomicHealth =~ HIV_prevalence + Unemployment  
+        
+        #structural model
+        Life_expectancy ~ SocioEconomicHealth + Healthcare_Spending + CO2_emissions + Electricity + Govt_health_expenditure + Tobacco_use + Alcohol_consumption + 
+        Political_stability + Political_stability + Freshwater_resources + Out_of_pocket +  Govt_effectiveness                                                                        
+  
+'
+MOD <- sem(EQN, data = scale(life_expectancy), sample.nobs = 217)
+MOD
+```
+
+#### PRACTICAL SIGNIFICANCE
+
+```{r}
+parameterEstimates(MOD)[1:4,]
+```
+
+The `Healthcare_Spending` factor had a stronger effect on `Private_health_expenditure` than `Health_expenditure` because of its regression coefficient of `1.00` compared to `0.14`.
+
+The `SocioEconomicHealth` factor had a stronger effect on `Hiv_prevalence` than `Unemployment` because of its regression coefficient of `1.00` compared to `0.26`.
+
+#### STATISTICAL SIGNIFICANCE
+
+```{r}
+parameterEstimates(MOD)[5:15,c("lhs","op", "rhs", "est", "z")]
+```
+
+`Electricity` is the most significant predictor of `Life_expectancy` as it has the z-score with the highest magnitude (`8.383`). It is statistically significant because the p-value (`0.000`) is below the common alpha level of `0.05`. There is positive relationship, such that for a 1-unit increase in a country's `Electricity` we would expect a `0.609` unit increase in `Life_expectancy` according to our model.
+
+`Out_of_pocket` is the second-most significant predictor of `Life_expectancy` as it has the z-score with the second highest magnitude (`3.672`). It is statistically significant because the p-value (`0.000`) is below the common alpha level of `0.05`. There is a negative relationship, such that for a 1-unit increase in in a country's `Out_of_pocket` we would expect a `-0.203` unit decrease in `Life_expectancy` according to our model.
+
+`Political_stability` is the third-most significant predictor of `Life_expectancy` as it has the z-score with the third highest magnitude (`3.063`). It is statistically significant because the p-value (`0.002`) is below the common alpha level of `0.05`. There is a positive relationship, such that for a 1-unit increase in in a country's `Political_stability` we would expect a `0.232` unit positive in `Life_expectancy` according to our model.
+
+`Govt_health_expenditure` is the fourth-most significant predictor of `Life_expectancy` as it has the z-score with the fourth highest magnitude (`2.630`). It is statistically significant because the p-value (`0.009`) is below the common alpha level of `0.05`. There is a positive relationship, such that for a 1-unit increase inin a country's `Govt_health_expenditure` we would expect a `0.169` unit increase in `Life_expectancy` according to our model.
+
+`Alcohol_consumption` is the fifth-most significant predictor of `Life_expectancy` as it has the z-score with the fifth highest magnitude (`2.084`). It is statistically significant because the p-value (`0.037`) is below the common alpha level of `0.05`. There is a negative relationship, such that for a 1-unit increase in in a country's `Alcohol_consumption` we would expect a `0.107` unit decrease in `Life_expectancy` according to our model.
+
+`Tabacoo_use` is the sixth-most significant predictor of `Life_expectancy` as it has the z-score with the sixth highest magnitude (`1.967`). It is statistically significant because the p-value (`0.049`) is below the common alpha level of `0.05`. There is a positive relationship, such that for a 1-unit increase in in a country's `Tabacoo_use` we would expect a `0.087` unit increase in `Life_expectancy` according to our model.
+
+#### Model Fit
+
+```{r}
+indicies <- fitMeasures(MOD)
+indicies
+```
+
+**Comparative Fit Indicies**
+
+```{r}
+indicies['nfi']
+indicies['nnfi']
+indicies['ifi']
+indicies['cfi']
+```
+
+Our Normed Fit Index lies at `0.582`, our Non-normed Fit Index lies at `0.473`, our Incremental Fit Index lies at `0.642`, and our Comparative Fit Index lies at `0.626`. These our below the common threshold (`0.90-0.95`) that is considered a good fit, so our model does not provide an adequate fit when compared to a fully independent model according to these comparative fit indices.
+
+```{r}
+indicies['rmsea']
+```
+
+Our Root Mean Square Error of Approximation lies at `0.206` which is above the common threshold of `0.08`. This means that our model does not provide an adequate fit to the data when compared to a fully saturated model according to this index of fit.
+
+**Absolute Fit Indicies**
+
+```{r}
+indicies['mfi']
+```
+
+Our McDonald & Marsh Fit Index lies at `0.439` which is far below the common threshold of `0.90-0.95`. This means our model does not provide an adequate fit to the original covariance structure.
+
+```{r}
+indicies['gfi']
+indicies['agfi']
+```
+
+Our goodness-of-fit index lies at `0.899` and our adjusted goodness-of-fit lies at `0.729`. This means that about `72.9%` of the covariability in the original data matrix can be explained by the structural equation model.
